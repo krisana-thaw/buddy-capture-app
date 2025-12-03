@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { AppState } from "@/types";
-import { generateSingleBuddyAssignment } from "@/lib/buddy-algorithm";
+import { generateAllBuddyAssignments } from "@/lib/buddy-algorithm";
 
 export default function BuddySelection() {
   const [appState, setAppState] = useLocalStorage<AppState>("buddy-capture-data", {
@@ -24,28 +24,30 @@ export default function BuddySelection() {
   const handleRevealBuddy = () => {
     if (!selectedPerson) return;
 
+    // Check if this person already has an assignment
     if (appState.assignments[selectedPerson]) {
       setRevealedBuddy(appState.assignments[selectedPerson]);
       setShowBuddy(true);
-    } else {
-      const buddy = generateSingleBuddyAssignment(
-        selectedPerson,
-        appState.participants,
-        appState.assignments
-      );
-      
-      if (buddy) {
-        const updatedState = {
-          ...appState,
-          assignments: {
-            ...appState.assignments,
-            [selectedPerson]: buddy,
-          },
-        };
-        setAppState(updatedState);
-        setRevealedBuddy(buddy);
-        setShowBuddy(true);
-      }
+      return;
+    }
+
+    // If no assignments exist yet, generate ALL at once using single-cycle algorithm
+    let currentAssignments = appState.assignments;
+
+    if (Object.keys(currentAssignments).length === 0) {
+      currentAssignments = generateAllBuddyAssignments(appState.participants);
+
+      setAppState({
+        ...appState,
+        assignments: currentAssignments,
+      });
+    }
+
+    // Reveal this person's buddy
+    const buddy = currentAssignments[selectedPerson];
+    if (buddy) {
+      setRevealedBuddy(buddy);
+      setShowBuddy(true);
     }
   };
 
